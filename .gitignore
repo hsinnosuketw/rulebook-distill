@@ -10,3 +10,4 @@ toolbench_test/
 *.zip
 
 finqa.py
+.ipynb_checkpoints/
