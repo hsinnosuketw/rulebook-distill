@@ -1,0 +1,12 @@
+# Dataset directories
+FinQA-main/
+FinTabNet.c-PDF_Annotations/
+metatextgrad/
+toolbench_test/
+
+# Files
+
+*.tar.gz
+*.zip
+
+finqa.py
