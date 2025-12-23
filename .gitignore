@@ -11,3 +11,4 @@ toolbench_test/
 
 finqa.py
 .ipynb_checkpoints/
+.env
