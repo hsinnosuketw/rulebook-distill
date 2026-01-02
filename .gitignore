@@ -4,11 +4,18 @@ FinTabNet.c-PDF_Annotations/
 metatextgrad/
 toolbench_test/
 
+synthesized_rules.json
+
 # Files
 
 *.tar.gz
 *.zip
+*.log
+*.out
 
 finqa.py
 .ipynb_checkpoints/
 .env
+
+# System Files
+__pycache__/

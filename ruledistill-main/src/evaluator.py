@@ -5,7 +5,8 @@ import math
 from openai import OpenAI
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
-from prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from src.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, SYSTEM_PROMPT_WITH_RULES_TEMPLATE
+from utils.rule import rulebook_xml_content
 
 load_dotenv()
 
@@ -169,31 +170,36 @@ def classify_error(pred_val, gt_val, raw_response, tolerance=1e-4, rel_tolerance
         
     return "computation error"
 
-def get_direct_answer(question, context):
+def get_direct_answer(question, context, rules=None):
+    if rules:
+        system_content = SYSTEM_PROMPT_WITH_RULES_TEMPLATE.format(rules=rules)
+    else:
+        system_content = SYSTEM_PROMPT
+        
     formatted_user_prompt = USER_PROMPT_TEMPLATE.format(context=context, question=question)
     try:
         response = client.chat.completions.create(
             model="meta/llama-3.3-70b-instruct",
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": formatted_user_prompt}
             ],
             temperature=0.0,
-            max_tokens=128 # Increased from 20
+            max_tokens=128
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         print(f"Error calling model: {e}")
         return ""
 
-def evaluate_accuracy(dataset, limit=None, output_file="results.jsonl"):
+def evaluate_accuracy(dataset, limit=None, output_file="results.jsonl", rules=None):
     correct_count = 0
     total_count = 0
     
     samples = dataset[:limit] if limit else dataset
     
     with open(output_file, 'w', encoding='utf-8') as f:
-        for item in tqdm(samples, desc="Evaluating"):
+        for item in tqdm(samples, desc=f"Evaluating ({output_file})"):
             qa = item['qa']
             question = qa['question']
             context = " ".join(qa['gold_inds'].values())
@@ -203,7 +209,7 @@ def evaluate_accuracy(dataset, limit=None, output_file="results.jsonl"):
             if gt_val == "n/a":
                 gt_val = str_to_num(str(qa.get('answer', '')))
 
-            raw_pred = get_direct_answer(question, context)
+            raw_pred = get_direct_answer(question, context, rules=rules)
             pred_val = clean_answer_robust(raw_pred)
             
             error_cat = classify_error(pred_val, gt_val, raw_pred)
@@ -235,12 +241,21 @@ if __name__ == "__main__":
     dataset = load_finqa_dataset(dataset_path)
     print(f"Loaded {len(dataset)} samples.")
     
-    limit = None 
-    print(f"Starting evaluation (limit={limit}, max_tokens=128)...")
+    # Run WITHOUT rules
+    limit = None
+    # print(f"Starting evaluation WITHOUT rules (limit={limit})...")
+    # accuracy_no_rules, correct_no_rules, total_no_rules = evaluate_accuracy(dataset, limit=limit, output_file="results.jsonl")
     
-    accuracy, correct, total = evaluate_accuracy(dataset, limit=limit)
+    # Run WITH rules
+    print(f"Starting evaluation WITH rules (limit={limit})...")
+    accuracy_with_rules, correct_with_rules, total_with_rules = evaluate_accuracy(
+        dataset, 
+        limit=limit, 
+        output_file="results_with_rule.jsonl", 
+        rules=rulebook_xml_content
+    )
     
-    print("\n--- Results ---")
-    print(f"Total Samples: {total}")
-    print(f"Correct: {correct}")
-    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print("\n--- Results (WITH Rules) ---")
+    print(f"Total Samples: {total_with_rules}")
+    print(f"Correct: {correct_with_rules}")
+    print(f"Accuracy: {accuracy_with_rules * 100:.2f}%")
