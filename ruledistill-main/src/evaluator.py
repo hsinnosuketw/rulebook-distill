@@ -1,3 +1,29 @@
+"""
+FinQA Evaluator with Rule-Based Distillation
+
+This script evaluates the performance of an LLM (specifically Llama-3.3-70b via Nvidia API)
+on the FinQA dataset. It supports evaluating the model both with and without
+injected domain-specific rules.
+
+Key Functionalities:
+1.  **Dataset Loading**: Loads the FinQA dataset from a JSON file.
+2.  **Numerical Parsing**: robustly converts strings and model outputs into numerical values,
+    handling percentages, currency symbols, and special constants.
+3.  **Program Evaluation**: executing the ground truth programs provided in FinQA to
+    verify the expected numerical answer.
+4.  **Model Inference**: Queries the LLM to answer financial questions based on provided context.
+    It can optionally prepend a set of distilled rules to the system prompt.
+5.  **Error Analysis**: Compares the model's predicted value against the ground truth.
+    It classifies results as "correct", "computation error", or "representation error".
+6.  **Reporting**: Outputs detailed logs of predictions, ground truths, and error categories
+    to JSONL files for further analysis.
+
+Usage:
+    Run this script directly to perform an evaluation.
+    Adjust `dataset_path` in the `__main__` block to point to your data.
+    Uncomment/comment the "WITHOUT rules" or "WITH rules" sections as needed.
+"""
+
 import json
 import os
 import re
@@ -7,6 +33,8 @@ from dotenv import load_dotenv
 from tqdm.auto import tqdm
 from src.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, SYSTEM_PROMPT_WITH_RULES_TEMPLATE
 from utils.rule import rulebook_xml_content
+
+
 
 load_dotenv()
 
@@ -236,6 +264,7 @@ def evaluate_accuracy(dataset, limit=None, output_file="results.jsonl", rules=No
     return accuracy, correct_count, total_count
 
 if __name__ == "__main__":
+    
     dataset_path = "/root/hsin_research/FinQA-main/dataset/train.json"
     print(f"Loading dataset from {dataset_path}...")
     dataset = load_finqa_dataset(dataset_path)

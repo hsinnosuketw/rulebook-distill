@@ -14,7 +14,7 @@ DATASET_PATH = "/root/hsin_research/FinQA-main/dataset/train.json"
 FAILURES_PATH = "/root/hsin_research/ruledistill-main/data/failed_results_with_ids.jsonl"
 OUTPUT_FILE = "synthesized_rules.json"
 # Exact model name provided by user
-MODEL_NAME = "deepseek-ai/deepseek-v3.2"
+MODEL_NAME = "meta/llama-3.3-70b-instruct"
 
 def load_dataset(path=DATASET_PATH):
     print(f"Loading dataset from {path}...")

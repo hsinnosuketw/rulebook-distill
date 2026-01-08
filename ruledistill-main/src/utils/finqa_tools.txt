@@ -1,0 +1,10 @@
+{('add', 2),
+ ('divide', 2),
+ ('exp', 2),
+ ('greater', 2),
+ ('multiply', 2),
+ ('subtract', 2),
+ ('table_average', 2),
+ ('table_max', 2),
+ ('table_min', 2),
+ ('table_sum', 2)}
