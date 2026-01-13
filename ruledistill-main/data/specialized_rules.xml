@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Rulebook domain="finqa" version="2.0" description="Optimized rules with worked examples">
+
+<!-- SIGN HANDLING RULES -->
+<Rule id="SIGN-01" type="SignError" phase="calculation" confidence="1">
+    <Trigger>The question asks for percentage change, growth rate, or difference between two values</Trigger>
+    <Action>
+        SIGN CHECK PROTOCOL:
+        1. Identify OLD value and NEW value
+        2. Calculate: (NEW - OLD) / OLD
+        3. If NEW < OLD, result MUST be NEGATIVE
+        
+        EXAMPLE:
+        - 2015 revenue: $34.2M
+        - 2016 revenue: $32.5M
+        - Change: (32.5 - 34.2) / 34.2 = -1.7/34.2 = -0.0497 = -4.97%
+        - WRONG: 4.97% (missing negative sign)
+        - CORRECT: -4.97% or -0.0497
+    </Action>
+</Rule>
+
+<Rule id="SIGN-02" type="SignError" phase="output" confidence="1">
+    <Trigger>Cash flow, financing activities, or change calculations</Trigger>
+    <Action>
+        CASH FLOW SIGN RULES:
+        - Increase in assets = NEGATIVE cash flow
+        - Decrease in assets = POSITIVE cash flow
+        - Increase in liabilities = POSITIVE cash flow
+        - Decrease in liabilities = NEGATIVE cash flow
+        
+        Always verify the sign makes logical sense for the financial metric.
+    </Action>
+</Rule>
+
+<!-- PERCENTAGE FORMAT RULES -->
+<Rule id="PCT-01" type="FormatError" phase="output" confidence="1">
+    <Trigger>Question asks for a percentage and ground truth appears to be in decimal form (value less than 1)</Trigger>
+    <Action>
+        FORMAT MATCHING:
+        If ground truth is 0.0497, your answer should be 0.0497 (NOT 4.97)
+        If ground truth is 4.97, your answer should be 4.97 (NOT 0.0497)
+        
+        DETECTION: Look at the magnitude of expected answer
+        - Values like 0.05, 0.12, -0.03 are DECIMAL form
+        - Values like 5%, 12%, -3% are PERCENTAGE form
+    </Action>
+</Rule>
+
+<Rule id="PCT-02" type="ArithmeticError" phase="calculation" confidence="1">
+    <Trigger>Calculating percentage of total, market share, or proportion</Trigger>
+    <Action>
+        PROPORTION FORMULA:
+        Percentage = (Part / Whole) × 100
+        
+        EXAMPLE:
+        - Segment revenue: $14,001M
+        - Total revenue: $26,302M
+        - Percentage: 14001/26302 × 100 = 53.23%
+        - As decimal: 0.5323
+    </Action>
+</Rule>
+
+<!-- SCALE HANDLING RULES -->
+<Rule id="SCALE-01" type="ScaleError" phase="input" confidence="1">
+    <Trigger>Values in millions, billions, or thousands are mentioned</Trigger>
+    <Action>
+        UNIT CONSISTENCY:
+        1. Identify all values and their units (M = million, B = billion, K = thousand)
+        2. Convert ALL values to the same unit before calculations
+        3. Express final answer in the requested unit
+        
+        EXAMPLE:
+        - "Revenue increased from $2.5M to $3.1M"
+        - Change: 3.1M - 2.5M = 0.6M = $600,000
+        - NOT: 3.1 - 2.5 = 0.6 (missing unit)
+    </Action>
+</Rule>
+
+<!-- FORMULA APPLICATION RULES -->
+<Rule id="FORM-01" type="ArithmeticError" phase="calculation" confidence="1">
+    <Trigger>Calculating year-over-year change, growth rate, or CAGR</Trigger>
+    <Action>
+        GROWTH RATE FORMULA:
+        Growth Rate = (New Value - Old Value) / Old Value
+        
+        STEP-BY-STEP:
+        1. Identify the OLD value (earlier period)
+        2. Identify the NEW value (later period)
+        3. Subtract: difference = NEW - OLD
+        4. Divide: rate = difference / OLD
+        5. Check sign: if NEW < OLD, rate should be negative
+        
+        To convert to percentage: multiply by 100
+    </Action>
+</Rule>
+
+<Rule id="FORM-02" type="ArithmeticError" phase="calculation" confidence="1">
+    <Trigger>Calculating total from a known part and its percentage</Trigger>
+    <Action>
+        REVERSE PERCENTAGE FORMULA:
+        Total = Part / (Percentage / 100)
+        
+        EXAMPLE:
+        - "Aircraft fuel expense is $9,896M, which is 23.6% of total operating expenses"
+        - Total = 9896 / 0.236 = $41,932M
+    </Action>
+</Rule>
+
+<!-- COMPARISON RULES -->
+<Rule id="COMP-01" type="LogicError" phase="output" confidence="1">
+    <Trigger>Question asks "did X exceed Y" or "is X greater than Y"</Trigger>
+    <Action>
+        COMPARISON PROTOCOL:
+        1. Calculate or retrieve both values
+        2. Compare: X > Y
+        3. Answer "yes" if true, "no" if false
+        
+        Do NOT provide the numerical difference - provide yes/no.
+    </Action>
+</Rule>
+
+<Rule id="COMP-02" type="LogicError" phase="calculation" confidence="1">
+    <Trigger>Question asks for the "difference" between two values</Trigger>
+    <Action>
+        DIFFERENCE TYPES:
+        - "What is the difference" → Usually absolute value
+        - "By how much did X change" → Signed difference (can be negative)
+        - "How much more/less" → Explicitly directional
+        
+        Always consider context for sign.
+    </Action>
+</Rule>
+
+<!-- PRECISION RULES -->
+<Rule id="PREC-01" type="PrecisionError" phase="output" confidence="1">
+    <Trigger>Final answer requires rounding</Trigger>
+    <Action>
+        ROUNDING PROTOCOL:
+        1. Perform ALL calculations with full precision
+        2. Round ONLY at the final step
+        3. Match the precision of the expected answer format
+        
+        Common formats:
+        - Percentages: 1-2 decimal places (e.g., 53.2%, 12.34%)
+        - Currency: usually whole numbers or 2 decimal places
+        - Ratios: 2-4 decimal places
+    </Action>
+</Rule>
+
+<!-- DATA RETRIEVAL RULES -->
+<Rule id="DATA-01" type="ContextError" phase="input" confidence="1">
+    <Trigger>Question references specific years, quarters, or time periods</Trigger>
+    <Action>
+        TIME PERIOD VERIFICATION:
+        1. Identify the exact time period asked about
+        2. Find the corresponding values in the context
+        3. Do NOT use values from different time periods
+        
+        Common mistakes:
+        - Using 2015 data when asked about 2016
+        - Mixing Q1 and Q4 values
+        - Confusing fiscal year with calendar year
+    </Action>
+</Rule>
+
+<Rule id="DATA-02" type="ContextError" phase="input" confidence="1">
+    <Trigger>Multiple similar metrics exist in the context (e.g., multiple revenue figures)</Trigger>
+    <Action>
+        METRIC DISAMBIGUATION:
+        1. Read the question carefully for qualifiers (e.g., "net", "gross", "adjusted")
+        2. Match the exact metric name from the question
+        3. If ambiguous, state the assumption
+        
+        Common confusions:
+        - Net revenue vs gross revenue
+        - Operating income vs net income
+        - Total assets vs current assets
+    </Action>
+</Rule>
+
+</Rulebook>

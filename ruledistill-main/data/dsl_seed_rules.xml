@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Rulebook domain="finqa-dsl" version="1.0">
+  <!-- 
+  DSL Seed Rulebook for FinQA
+  Contains concrete DSL syntax examples to prevent common errors.
+  -->
+
+  <Rule id="percentage_as_decimal" type="FORMAT" priority="high">
+    <Trigger>Question asks for percentage, portion, share, or ratio of a total</Trigger>
+    <Action>
+      Use divide(numerator, denominator) DIRECTLY.
+      Result should be DECIMAL (e.g., 0.65 for 65%).
+      
+      CORRECT: ["divide(", "1733", "2640", ")", "EOF"] → 0.6564
+      WRONG:   ["divide(", "1733", "2640", ")", "multiply(", "#0", "100", ")", "EOF"] → 65.64
+      
+      The evaluator expects decimal format. Do NOT multiply by 100.
+    </Action>
+  </Rule>
+
+  <Rule id="growth_rate_formula" type="CALCULATION" priority="high">
+    <Trigger>Question asks for growth rate, change rate, or percentage change</Trigger>
+    <Action>
+      Step 1: subtract(new_value, old_value)
+      Step 2: divide(#0, old_value)
+      
+      CORRECT: ["subtract(", "959.2", "991.1", ")", "divide(", "#0", "991.1", ")", "EOF"]
+      Result: -0.03219 (negative growth)
+      
+      Note: #0 references result from step 0 (the subtraction).
+    </Action>
+  </Rule>
+
+  <Rule id="units_already_correct" type="FORMAT" priority="high">
+    <Trigger>Question asks for value "in millions" or "in thousands" but context numbers are already in that unit</Trigger>
+    <Action>
+      DO NOT divide by 1000, 1000000, or any scale factor.
+      The numbers in context are already in the requested unit.
+      
+      Example: "What is the increase in millions?" with values 24490 and 15386 (already in millions)
+      CORRECT: ["subtract(", "24490", "15386", ")", "EOF"] → 9104
+      WRONG:   ["subtract(", "24490", "15386", ")", "divide(", "#0", "1000", ")", "EOF"] → 9.104
+    </Action>
+  </Rule>
+
+  <Rule id="percentage_input_format" type="INPUT" priority="medium">
+    <Trigger>Context contains percentage values like "23.6%"</Trigger>
+    <Action>
+      You can use percentage notation directly: "23.6%"
+      It will be automatically converted to 0.236.
+      
+      Both are equivalent:
+      - ["divide(", "9896", "23.6%", ")", "EOF"]
+      - ["divide(", "9896", "0.236", ")", "EOF"]
+    </Action>
+  </Rule>
+
+  <Rule id="step_reference_syntax" type="SYNTAX" priority="high">
+    <Trigger>Calculation requires multiple steps with intermediate results</Trigger>
+    <Action>
+      Use #N to reference result from step N (0-indexed).
+      
+      Example: Calculate (500-300)/500
+      ["subtract(", "500", "300", ")", "divide(", "#0", "500", ")", "EOF"]
+      
+      Step 0: subtract(500, 300) → 200 (stored as #0)
+      Step 1: divide(#0, 500) → divide(200, 500) → 0.4
+    </Action>
+  </Rule>
+
+  <Rule id="const_usage" type="SYNTAX" priority="medium">
+    <Trigger>Calculation requires common constants like 100, 1000, or -1</Trigger>
+    <Action>
+      Use const_N format for standard constants:
+      - const_100 → 100
+      - const_1000 → 1000
+      - const_m1 → -1
+      - const_5 → 5
+      
+      Example: ["divide(", "308.3", "const_5", ")", "EOF"]
+    </Action>
+  </Rule>
+
+  <Rule id="comparison_operation" type="SYNTAX" priority="medium">
+    <Trigger>Question asks whether one value is greater than another, or asks yes/no comparison</Trigger>
+    <Action>
+      Use greater(a, b) operation.
+      Returns "yes" if a > b, otherwise "no".
+      
+      Example: "Did revenue exceed costs?"
+      ["greater(", "revenue_value", "cost_value", ")", "EOF"]
+    </Action>
+  </Rule>
+
+  <Rule id="exact_numbers" type="INPUT" priority="high">
+    <Trigger>Extracting numbers from context for calculation</Trigger>
+    <Action>
+      Use EXACT numbers from context. Do not round or modify.
+      
+      If context says "959.2", use "959.2" not "959" or "960".
+      If context says "$1733", use "1733" (remove $ symbol).
+      If context says "(500)" for negative, use "-500" or handle as negative.
+    </Action>
+  </Rule>
+</Rulebook>

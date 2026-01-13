@@ -1,0 +1,82 @@
+<Rulebook domain="finqa">
+<Rule id="01" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>financial calculation</Trigger>
+<Action>apply correct formula, ensure unit consistency, consider question context, verify calculation aligns with question requirements, handle potential errors, and validate result format</Action>
+</Rule>
+<Rule id="02" type="BAD_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>percentage calculation</Trigger>
+<Action>calculate percentage as (Part/Whole) * 100, ensure correct unit conversion, verify result as a percentage, consider context for accurate representation, and validate result format, ensuring correct decimal placement and significant figures</Action>
+</Rule>
+<Rule id="03" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>context understanding</Trigger>
+<Action>comprehend question context, apply relevant rules, consider specific requirements, ensure data relevance to calculations, identify key terms and concepts, and handle ambiguous or unclear context</Action>
+</Rule>
+<Rule id="04" type="HALLUCINATION" phase="generation" confidence="1" source="batch_9">
+<Trigger>missing information</Trigger>
+<Action>require necessary information, verify data consistency, ensure question requirements are met, handle missing data according to context, use interpolation or extrapolation when appropriate, and validate result format, considering potential errors due to missing data</Action>
+</Rule>
+<Rule id="05" type="ARITHMETIC_ERROR" phase="generation" confidence="1" source="batch_9">
+<Trigger>calculation verification</Trigger>
+<Action>verify calculations using correct formulas, units, and rounding, ensure alignment with question context, check for arithmetic errors, validate result format, and consider potential calculation pitfalls, including incorrect significant figures or rounding</Action>
+</Rule>
+<Rule id="06" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>proportion calculation</Trigger>
+<Action>calculate proportion as part of the whole, consider context and question requirements, present result in correct format, ensure proper percentage or fraction representation, and validate result accuracy</Action>
+</Rule>
+<Rule id="07" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>growth rate calculation</Trigger>
+<Action>apply growth rate formula, ensure unit conversion, consider change direction, verify result as a percentage, handle negative growth rates, ensure correct interpretation, and validate result format</Action>
+</Rule>
+<Rule id="08" type="BAD_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>unit conversion</Trigger>
+<Action>convert units when necessary, verify consistency, ensure units align with question context, check for conversion errors, apply correct conversion factors, and validate result format, considering potential unit mismatches</Action>
+</Rule>
+<Rule id="09" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>cash flow calculation</Trigger>
+<Action>consider relevant factors, ensure unit conversion, verify calculation aligns with question requirements, handle cash flow specifics according to context, treat inflows and outflows properly, and validate result format</Action>
+</Rule>
+<Rule id="10" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>equity awards comparison</Trigger>
+<Action>compare equity awards value to compensation expense, consider all factors, ensure contextual appropriateness, verify result format, handle stock options and other equity-based compensation correctly, and validate result accuracy</Action>
+</Rule>
+<Rule id="11" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>result formatting</Trigger>
+<Action>present results in correct format, including percentages, whole numbers, or other required formats, verify alignment with question requirements, ensure proper rounding and significant figures, and validate result format</Action>
+</Rule>
+<Rule id="12" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>percentage representation</Trigger>
+<Action>ensure percentages are represented correctly, consider context for accurate decimal placement and significant figures, handle potential percentage point versus percent differences, verify result format, and validate result accuracy</Action>
+</Rule>
+<Rule id="13" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>average calculation</Trigger>
+<Action>calculate average values, consider context and question requirements, present result in correct format, handle missing or incomplete data, ensure proper calculation methodology, and validate result accuracy</Action>
+</Rule>
+<Rule id="14" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>context-specific calculations</Trigger>
+<Action>perform calculations specific to the question context, ensure correct formula application and unit consistency, consider key terms and concepts, verify result format and accuracy, and handle ambiguous or unclear context</Action>
+</Rule>
+<Rule id="15" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>significant figures and rounding</Trigger>
+<Action>apply correct significant figures and rounding rules, ensure consistency with question context, verify result format, handle potential errors due to rounding or significant figure mismatches, and validate result accuracy</Action>
+</Rule>
+<Rule id="16" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>data validation</Trigger>
+<Action>validate input data for accuracy and consistency, ensure data relevance to calculations, handle missing or incomplete data, and verify result format and accuracy</Action>
+</Rule>
+<Rule id="17" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>frequency calculation</Trigger>
+<Action>calculate frequency as a count or proportion, consider context and question requirements, present result in correct format, ensure proper representation, and validate result accuracy</Action>
+</Rule>
+<Rule id="18" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>outperformance comparison</Trigger>
+<Action>compare growth rates or performance metrics, consider context and question requirements, present result in correct format, ensure proper representation, and validate result accuracy</Action>
+</Rule>
+<Rule id="19" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>range calculation</Trigger>
+<Action>calculate range as the difference between the highest and lowest values, consider context and question requirements, present result in correct format, ensure proper representation, and validate result accuracy</Action>
+</Rule>
+<Rule id="20" type="MISSING_RULE" phase="generation" confidence="1" source="batch_9">
+<Trigger>beginning balance calculation</Trigger>
+<Action>calculate beginning balance, consider context and question requirements, handle missing data, present result in correct format, ensure proper representation, and validate result accuracy</Action>
+</Rule>
+</Rulebook>

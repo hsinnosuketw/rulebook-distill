@@ -1,0 +1,12 @@
+{
+  "total": 6251,
+  "normalized": 46,
+  "program_execution_success": 6251,
+  "program_execution_failed": 0,
+  "accuracy_original": 1.0,
+  "accuracy_normalized": 0.39209726443769,
+  "normalization_types": {
+    "million": 39,
+    "thousand": 7
+  }
+}

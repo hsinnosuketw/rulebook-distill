@@ -15,3 +15,20 @@ GEN_CONFIG = {
     "max_tokens": 1024,
     "stream": False
 }
+
+# Self-Regulated Pipeline Configuration
+PIPELINE_CONFIG = {
+    "batch_size": 10,
+    "max_rules": 15,
+    "solver_temperature": 0.0,    # Deterministic for reproducibility
+    "optimizer_temperature": 0.3,  # Slight creativity for rule synthesis
+    "solver_max_tokens": 1024,
+    "optimizer_max_tokens": 2048,
+    "early_stop_accuracy": 0.95,
+    "early_stop_patience": 3,
+}
+
+# Paths
+DATASET_PATH = "/root/hsin_research/FinQA-main/dataset/train.json"
+CHECKPOINT_DIR = "/root/hsin_research/ruledistill-main/data/checkpoints"
+OUTPUT_RULEBOOK_PATH = "/root/hsin_research/ruledistill-main/data/evolved_rulebook.xml"

@@ -19,3 +19,9 @@ finqa.py
 
 # System Files
 __pycache__/
+
+ruledistill-main/data/checkpoints/
+ruledistill-main/data/checkpoints_tmp/
+ruledistill-main/data/visualizations/
+ruledistill-main/src/data/checkpoints-no-example/
+ruledistill-main/src/data/visualizations/
