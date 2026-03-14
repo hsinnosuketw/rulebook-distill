@@ -27,7 +27,8 @@ class DataBuffer:
         batch_size: int = 10,
         shuffle: bool = False,
         limit: Optional[int] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        offset: int = 0
     ):
         """
         Initialize the data buffer.
@@ -38,17 +39,23 @@ class DataBuffer:
             shuffle: Whether to shuffle the dataset
             limit: Optional limit on number of samples to use
             seed: Random seed for reproducibility
+            offset: Starting index in the raw dataset (applied before limit)
         """
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed = seed
+        self.offset = offset
         
         # Load dataset
         self.dataset = self._load_dataset(dataset_path)
         
-        # Apply limit if specified
+        # Apply offset first, then limit
+        if offset > 0:
+            self.dataset = self.dataset[offset:]
+            print(f"Applied offset={offset}, {len(self.dataset)} samples remaining.")
         if limit and limit < len(self.dataset):
             self.dataset = self.dataset[:limit]
+            print(f"Applied limit={limit}, using {len(self.dataset)} samples.")
         
         # Shuffle if requested
         if shuffle:
@@ -95,7 +102,7 @@ class DataBuffer:
         # Extract ground truth - use exe_ans (program execution result) for accuracy
         program = qa.get('program', '')
         # Prefer exe_ans (computed from program) over raw answer for better accuracy
-        answer = qa.get('exe_ans', qa.get('answer', ''))
+        answer = qa.get('exe_ans', "")
         
         return {
             "idx": idx,
@@ -133,7 +140,8 @@ class DataBuffer:
         
         batch = []
         for i in range(start_idx, end_idx):
-            item = self._extract_item(self.dataset[i], i)
+            original_idx = self.offset + i  # Map back to original dataset index
+            item = self._extract_item(self.dataset[i], original_idx)
             batch.append(item)
         
         return batch

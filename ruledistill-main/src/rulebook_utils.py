@@ -321,3 +321,367 @@ def compress_rulebook(rulebook_xml: str, max_rules: int = 15) -> str:
         rule["id"] = f"{i+1:02d}"
     
     return serialize_rulebook(rules)
+
+
+# =============================================================================
+# NEURO-SYMBOLIC SKETCH EXTENSIONS
+# These functions add support for executable DSL sketches in rules
+# =============================================================================
+
+
+def parse_sketch(sketch_xml: str) -> Optional[dict]:
+    """
+    Parse a <Sketch> element into a template structure.
+    
+    Sketch format:
+        <Sketch>
+            divide(subtract($0:new_value, $1:old_value), $1:old_value)
+        </Sketch>
+    
+    Args:
+        sketch_xml: XML string or text containing the sketch
+        
+    Returns:
+        Dictionary with:
+        - template: str (the sketch string with slots)
+        - slots: list of slot definitions
+        - operations: list of operation names in order
+    """
+    if not sketch_xml:
+        return None
+    
+    # Extract content from XML tags if present
+    sketch_match = re.search(r'<Sketch>(.*?)</Sketch>', sketch_xml, re.DOTALL | re.IGNORECASE)
+    if sketch_match:
+        template = sketch_match.group(1).strip()
+    else:
+        template = sketch_xml.strip()
+    
+    # Clean up whitespace
+    template = re.sub(r'\s+', ' ', template).strip()
+    
+    # Extract slot definitions ($N:semantic_name)
+    slot_pattern = r'\$(\d+):(\w+)'
+    slots = []
+    for match in re.finditer(slot_pattern, template):
+        slot_id = f"${match.group(1)}"
+        semantic = match.group(2)
+        if not any(s['id'] == slot_id for s in slots):
+            slots.append({
+                'id': slot_id,
+                'index': int(match.group(1)),
+                'semantic': semantic
+            })
+    
+    # Sort slots by index
+    slots.sort(key=lambda s: s['index'])
+    
+    # Extract operation sequence
+    op_pattern = r'(\w+)\s*\('
+    operations = re.findall(op_pattern, template)
+    
+    return {
+        'template': template,
+        'slots': slots,
+        'operations': operations
+    }
+
+
+def extract_slot_bindings(sketch: dict) -> list[dict]:
+    """
+    Extract slot definitions from a parsed sketch.
+    
+    Args:
+        sketch: Parsed sketch dictionary from parse_sketch()
+        
+    Returns:
+        List of slot definitions with id, index, semantic, description
+    """
+    if not sketch or 'slots' not in sketch:
+        return []
+    
+    return sketch['slots']
+
+
+def instantiate_sketch(sketch: dict, bindings: dict) -> list[str]:
+    """
+    Fill sketch slots with concrete values to produce a DSL program.
+    
+    Args:
+        sketch: Parsed sketch from parse_sketch()
+        bindings: Dictionary mapping slot IDs ($0, $1, etc.) to values
+        
+    Returns:
+        List of program tokens (DSL format)
+        
+    Example:
+        sketch = parse_sketch("divide(subtract($0:new, $1:old), $1:old)")
+        bindings = {"$0": "100", "$1": "80"}
+        program = instantiate_sketch(sketch, bindings)
+        # Returns: ["subtract(", "100", "80", ")", "divide(", "#0", "80", ")", "EOF"]
+    """
+    if not sketch or 'template' not in sketch:
+        return []
+    
+    template = sketch['template']
+    
+    # Replace slot references with bound values
+    # First, normalize template to remove semantic hints
+    normalized = re.sub(r'\$(\d+):\w+', r'$\1', template)
+    
+    # Parse the normalized template into operations
+    # Pattern: operation(arg1, arg2)
+    op_pattern = r'(\w+)\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)'
+    
+    tokens = []
+    step_index = 0
+    
+    for match in re.finditer(op_pattern, normalized):
+        op = match.group(1)
+        arg1 = match.group(2).strip()
+        arg2 = match.group(3).strip()
+        
+        # Replace slot references with bound values or step references
+        def resolve_arg(arg: str) -> str:
+            if arg.startswith('$'):
+                # It's a slot reference
+                if arg in bindings:
+                    return str(bindings[arg])
+                else:
+                    return arg  # Leave unbound for debugging
+            elif arg.startswith('#'):
+                # It's a step reference, keep as-is
+                return arg
+            else:
+                # It's a literal or nested
+                # Check if it's a nested operation result
+                nested_match = re.match(r'(\w+)\s*\(', arg)
+                if nested_match:
+                    # This is a nested operation - return step reference
+                    # The outer loop will handle it
+                    return f"#{step_index}"
+                return arg
+        
+        resolved_arg1 = resolve_arg(arg1)
+        resolved_arg2 = resolve_arg(arg2)
+        
+        tokens.extend([f"{op}(", resolved_arg1, resolved_arg2, ")"])
+        step_index += 1
+    
+    if tokens:
+        tokens.append("EOF")
+    
+    return tokens
+
+
+def parse_rulebook_with_sketches(xml_string: str) -> list[dict]:
+    """
+    Parse rulebook XML with support for Sketch elements.
+    
+    Extended version of parse_rulebook that also extracts Sketch and Slots.
+    
+    Args:
+        xml_string: XML string containing the rulebook
+        
+    Returns:
+        List of rule dictionaries with additional sketch-related keys
+    """
+    rules = parse_rulebook(xml_string)  # Get base rules
+    
+    if not rules:
+        return rules
+    
+    try:
+        # Re-parse to get sketch elements
+        xml_string = xml_string.strip()
+        
+        # Handle code blocks
+        if "```xml" in xml_string:
+            match = re.search(r'```xml\s*(.*?)\s*```', xml_string, re.DOTALL)
+            if match:
+                xml_string = match.group(1)
+        elif "```" in xml_string:
+            match = re.search(r'```\s*(.*?)\s*```', xml_string, re.DOTALL)
+            if match:
+                xml_string = match.group(1)
+        
+        root = ET.fromstring(xml_string)
+        
+        if root.tag == "Rulebook":
+            rule_elements = root.findall(".//Rule")
+        elif root.tag == "Rule":
+            rule_elements = [root]
+        else:
+            rule_elements = root.findall(".//Rule")
+        
+        # Match rules by ID and add sketch info
+        rule_map = {r['id']: r for r in rules}
+        
+        for rule_elem in rule_elements:
+            rule_id = rule_elem.get("id", "")
+            if rule_id not in rule_map:
+                continue
+            
+            rule = rule_map[rule_id]
+            
+            # Check for Sketch element
+            sketch_elem = rule_elem.find("Sketch")
+            if sketch_elem is None:
+                # Check inside Action element
+                action_elem = rule_elem.find("Action")
+                if action_elem is not None:
+                    sketch_elem = action_elem.find("Sketch")
+            
+            if sketch_elem is not None and sketch_elem.text:
+                sketch_text = sketch_elem.text.strip()
+                parsed_sketch = parse_sketch(sketch_text)
+                rule['sketch'] = parsed_sketch
+                rule['has_sketch'] = True
+            else:
+                rule['has_sketch'] = False
+            
+            # Check for Slots element
+            slots_elem = rule_elem.find("Slots")
+            if slots_elem is not None:
+                slot_defs = []
+                for slot_elem in slots_elem.findall("Slot"):
+                    slot_defs.append({
+                        'id': slot_elem.get('id', ''),
+                        'semantic': slot_elem.get('semantic', ''),
+                        'description': slot_elem.text.strip() if slot_elem.text else ''
+                    })
+                rule['slot_definitions'] = slot_defs
+    
+    except Exception as e:
+        # If extended parsing fails, still return base rules
+        print(f"Warning: Extended sketch parsing failed: {e}")
+    
+    return rules
+
+
+def create_sketch_rule(
+    rule_id: str,
+    trigger: str,
+    sketch_template: str,
+    slots: list[dict] = None,
+    rule_type: str = "SKETCH",
+    source: str = "learned"
+) -> dict:
+    """
+    Create a new sketch-based rule dictionary.
+    
+    Args:
+        rule_id: Unique rule identifier
+        trigger: Trigger pattern (when to apply this rule)
+        sketch_template: DSL sketch with slot placeholders
+        slots: List of slot definitions
+        rule_type: Type of rule (default: SKETCH)
+        source: Source identifier
+        
+    Returns:
+        Rule dictionary ready for serialization
+    """
+    parsed = parse_sketch(sketch_template)
+    
+    return {
+        'id': rule_id,
+        'type': rule_type,
+        'trigger': trigger,
+        'action': '',  # Will be replaced by sketch in serialization
+        'sketch': parsed,
+        'has_sketch': True,
+        'slot_definitions': slots or parsed.get('slots', []),
+        'source': source,
+        'phase': 'generation',
+        'confidence': '1.0'
+    }
+
+
+def serialize_sketch_rule(rule: dict) -> str:
+    """
+    Serialize a sketch-based rule to XML string.
+    
+    Args:
+        rule: Rule dictionary with sketch data
+        
+    Returns:
+        XML string for this rule
+    """
+    rule_id = rule.get('id', '00')
+    rule_type = rule.get('type', 'SKETCH')
+    trigger = rule.get('trigger', '')
+    source = rule.get('source', '')
+    phase = rule.get('phase', 'generation')
+    confidence = rule.get('confidence', '1')
+    
+    lines = [
+        f'    <Rule id="{rule_id}" type="{rule_type}" phase="{phase}" '
+        f'confidence="{confidence}" source="{source}">'
+    ]
+    
+    lines.append(f'        <Trigger>{_escape_xml(trigger)}</Trigger>')
+    
+    if rule.get('has_sketch') and rule.get('sketch'):
+        sketch = rule['sketch']
+        lines.append('        <Action>')
+        lines.append(f'            <Sketch>{_escape_xml(sketch["template"])}</Sketch>')
+        lines.append('        </Action>')
+        
+        # Add slot definitions
+        if rule.get('slot_definitions'):
+            lines.append('        <Slots>')
+            for slot in rule['slot_definitions']:
+                desc = slot.get('description', '')
+                lines.append(
+                    f'            <Slot id="{slot["id"]}" semantic="{slot.get("semantic", "")}">'
+                    f'{_escape_xml(desc)}</Slot>'
+                )
+            lines.append('        </Slots>')
+    else:
+        action = rule.get('action', '')
+        lines.append(f'        <Action>{_escape_xml(action)}</Action>')
+    
+    lines.append('    </Rule>')
+    
+    return '\n'.join(lines)
+
+
+def serialize_rulebook_with_sketches(rules: list[dict], domain: str = "finqa-neuro") -> str:
+    """
+    Serialize a rulebook that may contain sketch-based rules.
+    
+    Args:
+        rules: List of rule dictionaries (may include sketches)
+        domain: Domain attribute for Rulebook element
+        
+    Returns:
+        XML string representation
+    """
+    if not rules:
+        return f'<Rulebook domain="{domain}"></Rulebook>'
+    
+    lines = [f'<Rulebook domain="{domain}">']
+    
+    for rule in rules:
+        if rule.get('has_sketch'):
+            lines.append(serialize_sketch_rule(rule))
+        else:
+            # Use standard serialization
+            rule_id = rule.get("id", "00")
+            rule_type = rule.get("type", "general")
+            phase = rule.get("phase", "generation")
+            confidence = rule.get("confidence", "1")
+            source = rule.get("source", "")
+            trigger = rule.get("trigger", "")
+            action = rule.get("action", "")
+            
+            lines.append(f'    <Rule id="{rule_id}" type="{rule_type}" phase="{phase}" '
+                        f'confidence="{confidence}" source="{source}">')
+            lines.append(f'        <Trigger>{_escape_xml(trigger)}</Trigger>')
+            lines.append(f'        <Action>{_escape_xml(action)}</Action>')
+            lines.append('    </Rule>')
+    
+    lines.append('</Rulebook>')
+    
+    return '\n'.join(lines)
+

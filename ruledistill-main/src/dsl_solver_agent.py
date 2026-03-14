@@ -4,136 +4,30 @@ DSL Solver Agent
 This module implements a solver that generates FinQA Domain-Specific Language (DSL)
 programs instead of direct numerical answers.
 
-The DSL uses operations like:
+The DSL uses 6 arithmetic operations:
 - add, subtract, multiply, divide, exp, greater
-- table_max, table_min, table_sum, table_average
+
+All numerical data is extracted from the provided context and used with arithmetic operations.
 
 Example program: ["subtract(", "6348", "6241", ")", "divide(", "#0", "6241", ")", "EOF"]
 """
 
 import re
 import json
-from typing import Optional, List
-from openai import OpenAI
+from typing import Optional, List, Dict
+import xml.etree.ElementTree as ET
 
-import config
+from model_client import LLMClient
 from dsl_evaluator import eval_program, parse_program_from_string, compare_results
+from prompt import DSL_SYSTEM_PROMPT, DSL_USER_PROMPT
 
-
-# DSL Solver System Prompt
-DSL_SYSTEM_PROMPT = """You are a financial reasoning expert that generates executable programs using a Domain-Specific Language (DSL).
-
-## Available Operations
-
-You MUST use exactly these 10 operations:
-
-### Arithmetic Operations (2 arguments)
-| Operation | Description | Example |
-|-----------|-------------|---------|
-| add(a, b) | Addition | add(100, 200) → 300 |
-| subtract(a, b) | Subtraction | subtract(500, 200) → 300 |
-| multiply(a, b) | Multiplication | multiply(10, 5) → 50 |
-| divide(a, b) | Division | divide(100, 4) → 25 |
-| exp(a, b) | Exponentiation | exp(2, 3) → 8 |
-| greater(a, b) | Comparison | greater(100, 50) → "yes" |
-
-### Table Operations (row_name, "none")
-| Operation | Description | Example |
-|-----------|-------------|---------|
-| table_max(row, none) | Maximum value in row | table_max(revenue, none) |
-| table_min(row, none) | Minimum value in row | table_min(costs, none) |
-| table_sum(row, none) | Sum of row values | table_sum(total, none) |
-| table_average(row, none) | Average of row values | table_average(income, none) |
-
-## Argument Types
-
-1. **Numbers**: Use exact values from context (e.g., "6348", "0.05", "1500000")
-2. **Percentages**: Write as "50%" (automatically converts to 0.5)
-3. **Constants**: Use "const_100" for 100, "const_m1" for -1
-4. **Step References**: Use "#0", "#1" to reference previous step results
-
-## Output Format
-
-Output your program as a JSON array of tokens:
-```json
-["operation(", "arg1", "arg2", ")", ..., "EOF"]
-```
-
-## Rules
-
-1. Every program MUST end with "EOF"
-2. Each operation is 4 tokens: ["op(", "arg1", "arg2", ")"]
-3. Use "#N" to reference step N's result (0-indexed)
-4. Extract exact numbers from the context - don't round or modify them
-5. For percentage calculations, use the decimal form OR use divide by const_100
-
-## Examples
-
-### Example 1: Percentage Change
-Question: "What is the growth rate from 6241 to 6348?"
-Program:
-```json
-["subtract(", "6348", "6241", ")", "divide(", "#0", "6241", ")", "EOF"]
-```
-Explanation: (6348-6241)/6241 = 0.01715 or 1.715%
-
-### Example 2: Percentage of Total
-Question: "What percentage is 1733 of 2640?"
-Program:
-```json
-["divide(", "1733", "2640", ")", "EOF"]
-```
-Explanation: 1733/2640 = 0.6564 or 65.64%
-
-### Example 3: Year-over-Year Change
-Question: "What is the difference between 2019 revenue (500) and 2018 revenue (450)?"
-Program:
-```json
-["subtract(", "500", "450", ")", "EOF"]
-```
-
-### Example 4: Multi-step Calculation
-Question: "If revenue is 1000 and costs are 600, what is the profit margin?"
-Program:
-```json
-["subtract(", "1000", "600", ")", "divide(", "#0", "1000", ")", "EOF"]
-```
-Explanation: (1000-600)/1000 = 0.4 or 40%
-
-{rulebook}
-
-## CRITICAL FORMAT RULES (Read Carefully!)
-
-### 1. PERCENTAGE RESULTS → Return as DECIMAL
-When asked for percentage/portion/share, return DECIMAL (0.65), NOT multiplied by 100 (65).
-```
-✓ CORRECT: ["divide(", "1733", "2640", ")", "EOF"] → 0.6564
-✗ WRONG:   [..., "multiply(", "#0", "100", ")", "EOF"] → 65.64
-```
-
-### 2. UNIT CONSISTENCY → Numbers are already in stated units
-If context says "in millions" and numbers are 24490, 15386 - they're ALREADY in millions.
-```
-✓ CORRECT: ["subtract(", "24490", "15386", ")", "EOF"] → 9104 (millions)
-✗ WRONG:   [..., "divide(", "#0", "1000", ")", "EOF"] → 9.1 (wrong scale)
-```
-
-### 3. EXACT NUMBERS → No rounding
-Use exact values: 959.2 not 959, 23.6% not 24%.
-
-IMPORTANT: Generate ONLY the JSON array. No explanations or additional text."""
-
-
-DSL_USER_PROMPT = """## TRUSTED CONTEXT (100% Verified - Use This Data Directly)
-{context}
-
-## Question
-{question}
-
-Based on the context above, generate a DSL program to compute the answer.
-
-Output ONLY the JSON array of tokens. Example format:
-["subtract(", "6348", "6241", ")", "divide(", "#0", "6241", ")", "EOF"]"""
+# BM25 imports (optional - only needed if rule selection is enabled)
+try:
+    from rank_bm25 import BM25Okapi
+    BM25_AVAILABLE = True
+except ImportError:
+    BM25_AVAILABLE = False
+    print("Warning: rank_bm25 not installed. Rule selection will be disabled.")
 
 
 class DSLSolverAgent:
@@ -144,34 +38,156 @@ class DSLSolverAgent:
     programs that can be evaluated to produce numerical answers.
     """
     
-    def __init__(self, model_name: str = None, temperature: float = 0.1):
+    def __init__(self, model_name: str = None, temperature: float = 0.1, 
+                 enable_rule_selection: bool = False, top_k_rules: int = 3,
+                 backend: str = "ollama", ollama_model: str = "qwen3-next:latest",
+                 think: bool = False):
         """
         Initialize the DSL solver.
         
         Args:
-            model_name: LLM model name (defaults to config.MODEL_NAME)
+            model_name: LLM model name (defaults to config.MODEL_NAME for nvidia backend)
             temperature: Generation temperature
+            enable_rule_selection: If True, use BM25 to select relevant rules
+            top_k_rules: Number of top rules to select when rule_selection is enabled
+            backend: LLM backend to use ("nvidia", "ollama", or None for config default)
+            ollama_model: Model name for Ollama backend (e.g., "qwen3-next:latest")
+            think: Enable thinking mode for Ollama models (e.g. qwen3-next)
         """
-        self.model_name = model_name or config.MODEL_NAME
-        self.temperature = temperature
-        self.client = OpenAI(
-            base_url=config.NVIDIA_BASE_URL,
-            api_key=config.NVIDIA_API_KEY
+        # Unified LLM client
+        self.llm = LLMClient(
+            backend=backend,
+            model_name=ollama_model if (backend or "ollama") == "ollama" else model_name,
+            temperature=temperature,
+            think=think,
         )
+        self.temperature = temperature
+        self.enable_rule_selection = enable_rule_selection
+        self.top_k_rules = top_k_rules
+        
+        # BM25 components (initialized when rulebook is provided)
+        self.bm25 = None
+        self.rules = []
+        self.corpus = []
     
-    def _format_rulebook(self, rulebook: str) -> str:
-        """Format rulebook for inclusion in prompt."""
-        if not rulebook or rulebook.strip() == "":
+    def _tokenize(self, text: str) -> List[str]:
+        """Simple tokenizer for BM25."""
+        # Remove non-alphanumeric and lowercase
+        text = re.sub(r'[^a-zA-Z0-9\s]', '', text).lower()
+        return text.split()
+    
+    def _parse_rulebook_xml(self, rulebook: str) -> List[Dict]:
+        """Parse XML rulebook into list of rule dictionaries."""
+        rules = []
+        try:
+            root = ET.fromstring(rulebook)
+            for rule_elem in root.findall('Rule'):
+                trigger_elem = rule_elem.find('Trigger')
+                action_elem = rule_elem.find('Action')
+                example_elem = rule_elem.find('Example')
+                
+                rule_data = {
+                    'id': rule_elem.get('id', ''),
+                    'type': rule_elem.get('type', ''),
+                    'trigger': trigger_elem.text.strip() if trigger_elem is not None and trigger_elem.text else '',
+                    'action': action_elem.text.strip() if action_elem is not None and action_elem.text else '',
+                    'example': example_elem.text.strip() if example_elem is not None and example_elem.text else ''
+                }
+                rules.append(rule_data)
+        except ET.ParseError as e:
+            print(f"Warning: Could not parse rulebook XML: {e}")
+        
+        return rules
+    
+    def _initialize_bm25(self, rulebook: str):
+        """Initialize BM25 index from rulebook."""
+        if not BM25_AVAILABLE:
+            return
+        
+        # Parse rulebook
+        self.rules = self._parse_rulebook_xml(rulebook)
+        
+        if not self.rules:
+            return
+        
+        # Create corpus from triggers (the main matching text)
+        self.corpus = [f"{rule['trigger']} {rule['type']}" for rule in self.rules]
+        
+        # Tokenize and initialize BM25
+        tokenized_corpus = [self._tokenize(doc) for doc in self.corpus]
+        self.bm25 = BM25Okapi(tokenized_corpus)
+        
+        print(f"  BM25 initialized with {len(self.rules)} rules")
+    
+    def select_relevant_rules(self, question: str, rulebook: str) -> List[Dict]:
+        """Select top-K relevant rules using BM25.
+        
+        Args:
+            question: The question text to match against rule triggers
+            rulebook: Full XML rulebook
+            
+        Returns:
+            List of selected rule dictionaries
+        """
+        if not self.enable_rule_selection or not BM25_AVAILABLE:
+            # Return all rules if selection is disabled
+            return self._parse_rulebook_xml(rulebook)
+        
+        # Initialize BM25 if not already done or if rulebook changed
+        if self.bm25 is None or not self.rules:
+            self._initialize_bm25(rulebook)
+        
+        if not self.bm25 or not self.rules:
+            return []
+        
+        # Search using question
+        tokenized_query = self._tokenize(question)
+        scores = self.bm25.get_scores(tokenized_query)
+        
+        # Get top-k indices
+        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:self.top_k_rules]
+        
+        # Return selected rules with score > 0
+        selected_rules = []
+        for idx in top_indices:
+            if scores[idx] > 0:
+                selected_rules.append(self.rules[idx])
+        
+        return selected_rules
+    
+    def _format_rulebook(self, selected_rules: List[Dict], total_rules: int = None) -> str:
+        """Format selected rules for inclusion in prompt.
+        
+        Args:
+            selected_rules: List of rule dictionaries to include
+            total_rules: Total number of rules in rulebook (for metadata)
+            
+        Returns:
+            Formatted string for prompt
+        """
+        if not selected_rules:
             return ""
         
+        # Build rules text
+        rules_text = []
+        for rule in selected_rules:
+            rule_str = f"""**Rule {rule['id']}** (Type: {rule['type']})
+Trigger: {rule['trigger']}
+Action: {rule['action']}"""
+            if rule.get('example'):
+                rule_str += f"\nExample: {rule['example']}"
+            rules_text.append(rule_str)
+        
+        metadata = ""
+        if total_rules and self.enable_rule_selection:
+            metadata = f" (selected {len(selected_rules)} from {total_rules} total rules)"
+        
         return f"""
-## Financial Reasoning Rules
+## Financial Reasoning Rules{metadata}
 
 Apply these rules when generating your program:
 
-<Rules>
-{rulebook}
-</Rules>
+{chr(10).join(rules_text)}
 """
     
     def _parse_program_response(self, response: str) -> Optional[List[str]]:
@@ -207,7 +223,7 @@ Apply these rules when generating your program:
         return None
     
     def predict(self, question: str, context: str, rulebook: str = "",
-               table: List[List[str]] = None) -> dict:
+               table: List[List[str]] = None, timeout_s: float = None) -> dict:
         """
         Generate a DSL program for the given question.
         
@@ -216,13 +232,24 @@ Apply these rules when generating your program:
             context: The context information
             rulebook: Optional rulebook string
             table: Optional table data for table operations
+            timeout_s: Optional wall-clock timeout in seconds. Uses streaming
+                       internally when set. None = no timeout (blocking call).
             
         Returns:
             Dictionary with program, result, and metadata
         """
+        # Select relevant rules if rule selection is enabled
+        if rulebook and rulebook.strip():
+            all_rules = self._parse_rulebook_xml(rulebook)
+            selected_rules = self.select_relevant_rules(question, rulebook)
+            rulebook_formatted = self._format_rulebook(selected_rules, len(all_rules))
+        else:
+            selected_rules = []
+            rulebook_formatted = ""
+        
         # Format prompts
         system_prompt = DSL_SYSTEM_PROMPT.format(
-            rulebook=self._format_rulebook(rulebook)
+            rulebook=rulebook_formatted
         )
         user_prompt = DSL_USER_PROMPT.format(
             context=context,
@@ -230,19 +257,21 @@ Apply these rules when generating your program:
         )
         
         try:
-            # Call LLM
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=512,
-                top_p=0.95
-            )
-            
-            raw_response = response.choices[0].message.content
+            # Call LLM — use streaming + timeout when timeout_s is set
+            if timeout_s is not None:
+                llm_result = self.llm.chat_with_timeout(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    timeout_s=timeout_s,
+                )
+            else:
+                llm_result = self.llm.chat_with_metadata(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                )
+            raw_response = llm_result["content"]
+            thinking = llm_result.get("thinking", "")
+            timed_out = llm_result.get("timed_out", False)
             
             # Parse program
             program = self._parse_program_response(raw_response)
@@ -253,7 +282,8 @@ Apply these rules when generating your program:
                     "program": None,
                     "result": None,
                     "error": "Failed to parse program",
-                    "raw_response": raw_response
+                    "raw_response": raw_response,
+                    "thinking": thinking
                 }
             
             # Execute program
@@ -265,14 +295,17 @@ Apply these rules when generating your program:
                     "program": program,
                     "result": None,
                     "error": "Program execution failed",
-                    "raw_response": raw_response
+                    "raw_response": raw_response,
+                    "thinking": thinking
                 }
             
             return {
                 "success": True,
                 "program": program,
                 "result": result,
-                "raw_response": raw_response
+                "raw_response": raw_response,
+                "thinking": thinking,
+                "timed_out": timed_out
             }
             
         except Exception as e:
@@ -281,16 +314,19 @@ Apply these rules when generating your program:
                 "program": None,
                 "result": None,
                 "error": str(e),
-                "raw_response": None
+                "raw_response": None,
+                "thinking": ""
             }
     
-    def predict_batch(self, batch: List[dict], rulebook: str = "") -> List[dict]:
+    def predict_batch(self, batch: List[dict], rulebook: str = "",
+                      timeout_s: float = None) -> List[dict]:
         """
         Generate DSL programs for a batch of items.
         
         Args:
             batch: List of items with 'question', 'context', 'program' (gt), optionally 'table'
             rulebook: Optional rulebook string
+            timeout_s: Optional per-question wall-clock timeout in seconds
             
         Returns:
             List of prediction results with program comparison
@@ -305,12 +341,14 @@ Apply these rules when generating your program:
                 question=item["question"],
                 context=item["context"],
                 rulebook=rulebook,
-                table=item.get("table")
+                table=item.get("table"),
+                timeout_s=timeout_s
             )
             
             # Add item metadata
             prediction["idx"] = item.get("idx", -1)
             prediction["question"] = item["question"]
+            prediction["context"] = item.get("context", "")  # Needed by optimizer for failure analysis
             prediction["ground_truth"] = item.get("ground_truth", "")
             prediction["gt_program"] = item.get("program", "")  # Ground truth program string
             

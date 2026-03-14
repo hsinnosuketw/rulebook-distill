@@ -7,9 +7,10 @@ feedback loop.
 """
 
 import re
-from openai import OpenAI
 
 import config
+from model_client import LLMClient
+from prompt import OPTIMIZER_SYSTEM_PROMPT, OPTIMIZER_USER_PROMPT, OPTIMIZER_XML_RETRY_PROMPT
 from rulebook_utils import (
     parse_rulebook,
     serialize_rulebook,
@@ -20,69 +21,6 @@ from rulebook_utils import (
 )
 
 
-# Optimizer-specific prompts
-OPTIMIZER_SYSTEM_PROMPT = """You are an AI Alignment Engineer optimizing a rulebook for financial QA.
-
-Your task is to analyze solver failures and evolve the rulebook to prevent future errors.
-
-## Guidelines
-
-### GENERALIZATION (Critical)
-- Rules must be ABSTRACT and applicable to unseen cases
-- Focus on methodology and logic patterns, NOT specific values
-
-### NO DATA LEAKAGE (Critical)
-- NEVER include specific numbers, entity names, or values from test cases in rules
-- Bad: "When calculating Apple's revenue, add Q1 + Q2"
-- Good: "When calculating annual revenue, sum all quarterly values"
-
-### STABILITY
-- Only modify rules that fail multiple times in the batch (2+ failures)
-- Do not oscillate on rule wording
-
-### COMPRESSION
-- Keep total rules under {max_rules}
-- Merge similar rules when possible
-- Remove rules that consistently don't help
-
-### ERROR TYPES
-Classify each failure as one of:
-- MISSING_RULE: No existing rule covers this case → Create new rule
-- BAD_RULE: Existing rule led to error → Refine rule wording  
-- CONFLICTING_RULES: Multiple rules contradicted → Merge or delete
-- HALLUCINATION: Model ignored rules → Add stricter enforcement language
-- ARITHMETIC_ERROR: Calculation mistake → Add verification instruction
-
-## Output Format
-Output ONLY the complete revised rulebook in XML format. No explanations before or after.
-"""
-
-OPTIMIZER_USER_PROMPT = """## Current Rulebook
-{current_rulebook}
-
-## Batch Results Summary
-- Total questions: {total_count}
-- Correct: {correct_count} ({accuracy:.1%})
-- Failed: {error_count}
-
-## Failure Analysis
-{failure_analysis}
-
-## Task
-1. Analyze each failure's root cause
-2. Classify error types
-3. Generate revised rulebook (max {max_rules} rules)
-
-Output the COMPLETE revised rulebook:
-<Rulebook domain="finqa">
-    <Rule id="01" type="..." phase="generation" confidence="1" source="batch_{batch_num}">
-        <Trigger>...</Trigger>
-        <Action>...</Action>
-    </Rule>
-    ...
-</Rulebook>"""
-
-
 class OptimizerAgent:
     """
     Analyzes batch failures and synthesizes rule updates.
@@ -91,29 +29,36 @@ class OptimizerAgent:
     Output: Revised Rulebook XML
     """
     
-    def __init__(self, client_type: str = "nvidia"):
+    def __init__(self, client_type: str = "ollama", backend: str = None,
+                 ollama_model: str = "qwen3-next:latest", think: bool = False):
         """
         Initialize the Optimizer agent.
         
         Args:
-            client_type: Type of LLM client ("nvidia" for NVIDIA NIM)
+            client_type: Type of LLM client ("nvidia" for NVIDIA NIM) - deprecated, use backend
+            backend: LLM backend to use ("nvidia", "ollama", or None for config default)
+            ollama_model: Model name for Ollama backend (e.g., "qwen3-next:latest")
+            think: Enable thinking mode for Ollama models (e.g. qwen3-next)
         """
-        if client_type == "nvidia":
-            self.client = OpenAI(
-                base_url=config.NVIDIA_BASE_URL,
-                api_key=config.NVIDIA_API_KEY
-            )
-        else:
-            raise ValueError(f"Unsupported client type: {client_type}")
+        # Support both old client_type and new backend parameter
+        effective_backend = backend or client_type or config.LLM_BACKEND
         
-        self.model_name = config.MODEL_NAME
+        # Unified LLM client
+        self.llm = LLMClient(
+            backend=effective_backend,
+            model_name=ollama_model if effective_backend == "ollama" else None,
+            temperature=0.3,
+            max_tokens=None,
+            think=think,
+        )
     
     def optimize(
         self,
         batch_results: list[dict],
         current_rulebook: str,
         batch_num: int = 0,
-        max_rules: int = 15
+        max_rules: int = 1000,
+        timeout_s: float = None
     ) -> dict:
         """
         Analyze batch failures and generate optimized rulebook.
@@ -123,6 +68,8 @@ class OptimizerAgent:
             current_rulebook: Current rulebook XML string
             batch_num: Current batch number (for tracking)
             max_rules: Maximum number of rules allowed
+            timeout_s: Optional wall-clock timeout in seconds per LLM call.
+                       Uses streaming internally when set. None = no timeout.
             
         Returns:
             Dictionary with:
@@ -147,7 +94,7 @@ class OptimizerAgent:
         failure_analysis = self._format_failure_analysis(analysis["failures"])
         
         # Format prompts
-        system_prompt = OPTIMIZER_SYSTEM_PROMPT.format(max_rules=max_rules)
+        system_prompt = OPTIMIZER_SYSTEM_PROMPT
         user_prompt = OPTIMIZER_USER_PROMPT.format(
             current_rulebook=current_rulebook,
             total_count=analysis["total_count"],
@@ -160,18 +107,27 @@ class OptimizerAgent:
         )
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.3,  # Slight creativity for rule synthesis
-                max_tokens=2048,
-                top_p=0.95
-            )
+            print(f"[DEBUG] Calling LLM via model_client")
             
-            raw_response = response.choices[0].message.content.strip()
+            if timeout_s is not None:
+                llm_result = self.llm.chat_with_timeout(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    timeout_s=timeout_s,
+                )
+                raw_response = llm_result["content"]
+                if llm_result.get("timed_out"):
+                    print(f"[Optimizer] ⚠ LLM call timed out after {timeout_s}s — using partial response")
+            else:
+                raw_response = self.llm.chat(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                )
+            print(raw_response)
+            
+            # DEBUG: Log the raw response for troubleshooting
+            print(f"[DEBUG] Optimizer raw response length: {len(raw_response)} chars")
+            print(f"[DEBUG] First 200 chars: {raw_response[:200]}..." if len(raw_response) > 200 else f"[DEBUG] Full response: {raw_response}")
             
             # Extract and validate rulebook from response
             new_rulebook = extract_rules_from_response(raw_response)
@@ -179,6 +135,60 @@ class OptimizerAgent:
             if not new_rulebook:
                 # Try using the whole response as XML
                 new_rulebook = raw_response
+            
+            # XML Validation with retry logic
+            import xml.etree.ElementTree as ET
+            xml_valid = False
+            retry_count = 0
+            max_retries = 1
+            
+            # Sanitize common XML issues from LLM output (e.g., S&P → S&amp;P)
+            new_rulebook = self._sanitize_xml(new_rulebook)
+            
+            while not xml_valid and retry_count <= max_retries:
+                try:
+                    # Attempt to parse XML
+                    ET.fromstring(new_rulebook)
+                    xml_valid = True
+                except ET.ParseError as e:
+                    print(f"XML Parse Error: {e}")
+                    
+                    if retry_count < max_retries:
+                        print(f"Retrying with stricter XML format prompt (attempt {retry_count + 1}/{max_retries})...")
+                        
+                        # Retry with stricter prompt
+                        retry_system_prompt = system_prompt + OPTIMIZER_XML_RETRY_PROMPT
+                        
+                        if timeout_s is not None:
+                            retry_result = self.llm.chat_with_timeout(
+                                system_prompt=retry_system_prompt,
+                                user_prompt=user_prompt,
+                                timeout_s=timeout_s,
+                            )
+                            raw_response = retry_result["content"]
+                            if retry_result.get("timed_out"):
+                                print(f"[Optimizer] ⚠ Retry timed out after {timeout_s}s")
+                        else:
+                            raw_response = self.llm.chat(
+                                system_prompt=retry_system_prompt,
+                                user_prompt=user_prompt,
+                                temperature=0.1,  # Lower temperature for stricter format
+                            )
+                        
+                        # DEBUG: Log retry response
+                        print(f"[DEBUG] Retry response length: {len(raw_response)} chars")
+                        print(f"[DEBUG] Retry first 200 chars: {raw_response[:200]}..." if len(raw_response) > 200 else f"[DEBUG] Retry full: {raw_response}")
+                        
+                        new_rulebook = extract_rules_from_response(raw_response)
+                        if not new_rulebook:
+                            new_rulebook = raw_response
+                        
+                        retry_count += 1
+                    else:
+                        # Max retries reached, keep current rulebook
+                        print("Warning: Could not parse optimizer response. Keeping current rulebook.")
+                        new_rulebook = current_rulebook
+                        xml_valid = True  # Exit loop
             
             # Validate and compress if needed
             rule_count = count_rules(new_rulebook)
@@ -198,6 +208,15 @@ class OptimizerAgent:
                 "success": True
             }
             
+        except ConnectionError as e:
+            print(f"❌ Connection error: {e}")
+            print(f"   Make sure Ollama is running if using Ollama backend")
+            return {
+                "new_rulebook": current_rulebook,
+                "analysis_summary": f"Connection error: {str(e)}",
+                "metrics": analysis,
+                "success": False
+            }
         except Exception as e:
             print(f"Optimizer error: {e}")
             return {
@@ -222,10 +241,9 @@ class OptimizerAgent:
         failures = []
         
         for result in batch_results:
-            predicted = result.get("answer", "")
-            ground_truth = result.get("ground_truth", "")
-            
-            is_correct = self._compare_answers(predicted, ground_truth)
+            # Use the solver's already-computed is_correct (from DSLEvaluator)
+            # instead of re-comparing with a potentially mismatched key/tolerance
+            is_correct = result.get("is_correct", False)
             
             if is_correct:
                 correct += 1
@@ -233,8 +251,11 @@ class OptimizerAgent:
                 failures.append({
                     "idx": result.get("idx"),
                     "question": result.get("question", ""),
-                    "predicted": predicted,
-                    "ground_truth": ground_truth,
+                    "context": result.get("context", ""),  # Supporting facts from gold_inds
+                    "predicted": str(result.get("result", "N/A")),
+                    "ground_truth": str(result.get("ground_truth", "")),
+                    "program": result.get("program", ""),  # Generated DSL program
+                    "gt_program": result.get("gt_program", ""),  # Ground truth program
                     "reasoning": result.get("reasoning", ""),
                     "rules_applied": result.get("rules_applied", [])
                 })
@@ -328,8 +349,25 @@ class OptimizerAgent:
         for i, f in enumerate(failures, 1):
             lines.append(f"### Failure {i}")
             lines.append(f"**Question:** {f['question'][:200]}...")
+            
+            # Include context (supporting facts from gold_inds)
+            context = f.get('context', '')
+            if context:
+                context_trunc = context[:300] + "..." if len(context) > 300 else context
+                lines.append(f"**Context:** {context_trunc}")
+            
             lines.append(f"**Predicted:** {f['predicted']}")
             lines.append(f"**Ground Truth:** {f['ground_truth']}")
+            
+            # Include generated and ground truth programs
+            gen_program = f.get('program', '')
+            if gen_program:
+                lines.append(f"**Generated Program:** {str(gen_program)[:200]}..." if len(str(gen_program)) > 200 else f"**Generated Program:** {gen_program}")
+            
+            gt_program = f.get('gt_program', '')
+            if gt_program:
+                lines.append(f"**Ground Truth Program:** {str(gt_program)[:200]}..." if len(str(gt_program)) > 200 else f"**Ground Truth Program:** {gt_program}")
+            
             lines.append(f"**Rules Applied:** {', '.join(f['rules_applied']) if f['rules_applied'] else 'none'}")
             
             # Include truncated reasoning
@@ -338,6 +376,20 @@ class OptimizerAgent:
             lines.append("")
         
         return "\n".join(lines)
+    
+    @staticmethod
+    def _sanitize_xml(xml_str: str) -> str:
+        """Sanitize LLM-generated XML by escaping bare & characters.
+        
+        LLMs commonly produce text like 'S&P 500' which is invalid XML.
+        This escapes & characters that are NOT already part of valid XML
+        entities (&amp; &lt; &gt; &quot; &apos; or &#...).
+        """
+        # Replace & that is NOT followed by amp; lt; gt; quot; apos; or #
+        sanitized = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;|#)', '&amp;', xml_str)
+        if sanitized != xml_str:
+            print(f"[Optimizer] Sanitized {xml_str.count('&') - sanitized.count('&')} bare '&' in XML")
+        return sanitized
     
     def classify_error(self, failure: dict, current_rules: list[dict]) -> str:
         """

@@ -1,0 +1,481 @@
+Loading FinQA train.json...
+Total entries: 6251
+
+Validating program annotations...
+
+================================================================================
+VALIDATION RESULTS
+================================================================================
+
+Total entries checked: 6251
+Entries with annotation errors: 2571
+Error rate: 41.13%
+
+================================================================================
+DETAILED ERROR REPORT
+================================================================================
+
+[1] ID: ADI/2009/page_49.pdf-1
+    Expected answer: 3.8
+    Program: divide(100, 100), divide(3.8, #0)
+    Question: what is the the interest expense in 2009?...
+    Errors found:
+      Step 0:
+        Claimed: divide1-1(100.0, 100.0) = 0.01
+        Correct: NONE (division by zero or invalid)
+
+[2] ID: ABMD/2012/page_75.pdf-1
+    Expected answer: yes
+    Program: multiply(607, 18.13), multiply(#0, const_1000), multiply(3.3, const_1000000), greater(#1, #2)
+    Question: during the 2012 year , did the equity awards in which the prescribed performance...
+    Errors found:
+      Step 0:
+        Claimed: multiply1-1(607.0, 18.13) = 11005.0
+        Correct: NONE (division by zero or invalid)
+
+[3] ID: AAL/2018/page_13.pdf-2
+    Expected answer: 41932.20339
+    Program: divide(9896, 23.6%)
+    Question: what was the total operating expenses in 2018 in millions...
+    Errors found:
+      Step 0:
+        Claimed: divide2-1(9896.0, 0.23600000000000002) = 41932.0
+        Correct: NONE (division by zero or invalid)
+
+[4] ID: ETR/2008/page_313.pdf-3
+    Expected answer: -0.03219
+    Program: subtract(959.2, 991.1), divide(#0, 991.1)
+    Question: what is the growth rate in net revenue in 2008?...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(959.2, 991.1) = -31.9
+        Correct: subtract(959.2, 991.1) = -31.900000
+
+[5] ID: C/2010/page_272.pdf-1
+    Expected answer: 0.97656
+    Program: divide(2.5, 1.6), divide(#0, 1.6)
+    Question: what was the growth rate of the loans held-for-sale that are carried at locom fr...
+    Errors found:
+      Step 0:
+        Claimed: divide1-1(2.5, 1.6) = 0.9
+        Correct: subtract(2.5, 1.6) = 0.900000
+
+[6] ID: IPG/2009/page_89.pdf-3
+    Expected answer: 96.55172
+    Program: subtract(34.8, 1.2), divide(#0, 34.8), multiply(#1, const_100)
+    Question: what percentage decrease occurred from 2011-2012 for deferred acquisition paymen...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(34.8, 1.2) = 33.6
+        Correct: subtract(34.8, 1.2) = 33.600000
+
+[7] ID: CDNS/2018/page_32.pdf-2
+    Expected answer: 56.57146
+    Program: multiply(1327657, 42.61), divide(#0, const_1000000)
+    Question: how is net change in cash from financing activity affected by the share repurcha...
+    Errors found:
+      Step 0:
+        Claimed: multiply1-1(1327657.0, 42.61) = 56571465.0
+        Correct: NONE (division by zero or invalid)
+
+[8] ID: GIS/2008/page_83.pdf-1
+    Expected answer: 6.9
+    Program: subtract(2309.9, 2303.0)
+    Question: what is the change in net assets from 2007 to 2008?...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(2309.9, 2303.0) = 6.9
+        Correct: subtract(2309.9, 2303.0) = 6.900000
+
+[9] ID: ETR/2008/page_376.pdf-2
+    Expected answer: -0.00317
+    Program: subtract(440.9, 442.3), divide(#0, 442.3)
+    Question: what is the percent change in net revenue between 2007 and 2008?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(440.9, 442.3) = -1.4
+        Correct: subtract(440.9, 442.3) = -1.400000
+
+[10] ID: MMM/2015/page_19.pdf-2
+    Expected answer: -0.16667
+    Program: subtract(10, 12), divide(#0, 12)
+    Question: in february 2016 what was the percent reduction in the board of directors author...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(10.0, 12.0) = -2.0
+        Correct: subtract(10.0, 12.0) = -2.000000
+
+[11] ID: GS/2014/page_134.pdf-3
+    Expected answer: 13588.0
+    Program: subtract(35764, 22176)
+    Question: in millions between 2014 and 2013 , what was the change in net derivative liabil...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(35764.0, 22176.0) = 13588.0
+        Correct: subtract(35764.0, 22176.0) = 13588.000000
+
+[12] ID: JPM/2003/page_100.pdf-4
+    Expected answer: 7.0
+    Program: subtract(15, 8)
+    Question: what was the net notional amounts of purchases and sales under sfas 140 in 2003 ...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(15.0, 8.0) = 7.0
+        Correct: subtract(15.0, 8.0) = 7.000000
+
+[13] ID: STT/2008/page_116.pdf-1
+    Expected answer: -0.16849
+    Program: subtract(23.59, 28.37), divide(#0, 28.37)
+    Question: what is percentage change in total conduit asset from 2007 to 2008?...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(23.59, 28.37) = -4.78
+        Correct: subtract(23.59, 28.37) = -4.780000
+
+[14] ID: MAS/2017/page_37.pdf-1
+    Expected answer: 0.016
+    Program: subtract(14.6%, 13.0%)
+    Question: what was the difference in operating profit margins as adjusted from 2015 to 201...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(0.146, 0.13) = 0.016
+        Correct: subtract(0.146, 0.13) = 0.016000
+
+[15] ID: TSCO/2017/page_68.pdf-3
+    Expected answer: 13.0
+    Program: subtract(78.0, 75.3), subtract(58.0, 49.9), subtract(54.0, 51.8), add(#0, #1), add(#2, #3)
+    Question: what was the total amount lost from the bond authorization to the withdrawn?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(78.0, 75.3) = 2.7
+        Correct: subtract(78.0, 75.3) = 2.700000
+      Step 1:
+        Claimed: minus2-2(58.0, 49.9) = 8.1
+        Correct: subtract(58.0, 49.9) = 8.100000
+      Step 2:
+        Claimed: minus2-3(54.0, 51.8) = 2.2
+        Correct: subtract(54.0, 51.8) = 2.200000
+
+[16] ID: FIS/2016/page_64.pdf-4
+    Expected answer: -0.03835
+    Program: subtract(1680, 1747), divide(#0, 1747)
+    Question: what is the percentage change in total trade receivables?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(1680.0, 1747.0) = -67.0
+        Correct: subtract(1680.0, 1747.0) = -67.000000
+
+[17] ID: FBHS/2017/page_46.pdf-2
+    Expected answer: -2.44
+    Program: divide(6.1, -2.5)
+    Question: in 2015 what was the ratio of the defined benefit plan income to defined benefit...
+    Errors found:
+      Step 0:
+        Claimed: divide2-1(6.1, -2.5) = 2.44
+        Correct: NONE (division by zero or invalid)
+
+[18] ID: BKNG/2015/page_38.pdf-2
+    Expected answer: 0.1182
+    Program: subtract(319.10, 285.37), divide(#0, 285.37)
+    Question: what was the percent of the growth of the the priceline group inc . from 2014 to...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(319.1, 285.37) = 33.73
+        Correct: subtract(319.1, 285.37) = 33.730000
+
+[19] ID: RE/2012/page_31.pdf-4
+    Expected answer: -0.11349
+    Program: subtract(425.7, 480.2), divide(#0, 480.2)
+    Question: as of december 31 , 2012 what was the percentage change in net reserves from 201...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(425.7, 480.2) = -54.5
+        Correct: subtract(425.7, 480.2) = -54.500000
+
+[20] ID: FIS/2016/page_64.pdf-3
+    Expected answer: -0.05315
+    Program: subtract(1639, 1731), divide(#0, 1731)
+    Question: what was the percentage change in total trade receivables net from 2015 to 2016?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(1639.0, 1731.0) = -92.0
+        Correct: subtract(1639.0, 1731.0) = -92.000000
+
+[21] ID: ADI/2016/page_61.pdf-2
+    Expected answer: 0.02602
+    Program: subtract(1679116, 1636526), divide(#0, 1636526)
+    Question: what is the percentage change in the balance of goodwill from 2015 to 2016?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(1679116.0, 1636526.0) = 42590.0
+        Correct: subtract(1679116.0, 1636526.0) = 42590.000000
+
+[22] ID: WRK/2019/page_51.pdf-3
+    Expected answer: 144.86
+    Program: subtract(930.4, 206.1), divide(#0, const_5)
+    Question: what was the average of the operating lease obligations between 2020 and 2024...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(930.4, 206.1) = 724.3
+        Correct: subtract(930.4, 206.1) = 724.300000
+
+[23] ID: IPG/2012/page_89.pdf-1
+    Expected answer: 36.7
+    Program: subtract(46.4, 9.7)
+    Question: what is the mathematical range for tedeemable noncontrolling interests and call ...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(46.4, 9.7) = 36.7
+        Correct: subtract(46.4, 9.7) = 36.700000
+
+[24] ID: V/2008/page_163.pdf-2
+    Expected answer: 26138609.0
+    Program: subtract(426390481, 400251872)
+    Question: what is the difference in the number of class usa stock of pre and after true-up...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(426390481.0, 400251872.0) = 26138609.0
+        Correct: subtract(426390481.0, 400251872.0) = 26138609.000000
+
+[25] ID: UA/2011/page_70.pdf-2
+    Expected answer: 0.25352
+    Program: subtract(26.7, 21.3), divide(#0, 21.3)
+    Question: what was the percentage increase in the rent expense from 2010 to 2011...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(26.7, 21.3) = 5.4
+        Correct: subtract(26.7, 21.3) = 5.400000
+
+[26] ID: LMT/2013/page_89.pdf-1
+    Expected answer: -0.19971
+    Program: subtract(3859, 4822), divide(#0, 4822)
+    Question: what was the percentage change in the number of rsus outstanding from 2012 to 20...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(3859.0, 4822.0) = -963.0
+        Correct: subtract(3859.0, 4822.0) = -963.000000
+
+[27] ID: UNP/2016/page_75.pdf-2
+    Expected answer: 0.14952
+    Program: add(535, 3043), divide(535, #0)
+    Question: in 2016 what was the percent of the total operating leases that was due includin...
+    Errors found:
+      Step 0:
+        Claimed: add2-1(535.0, 3043.0) = 3573.0
+        Correct: NONE (division by zero or invalid)
+
+[28] ID: GS/2013/page_47.pdf-2
+    Expected answer: 0.01543
+    Program: subtract(32900, 32400), divide(#0, 32400)
+    Question: what is the percentage change in staff number in 2013?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(32900.0, 32400.0) = 500.0
+        Correct: subtract(32900.0, 32400.0) = 500.000000
+
+[29] ID: MA/2010/page_107.pdf-1
+    Expected answer: -0.0625
+    Program: subtract(180, 192), divide(#0, 192)
+    Question: what was the percent of the change in the significant unobservable inputs from 2...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(180.0, 192.0) = -12.0
+        Correct: subtract(180.0, 192.0) = -12.000000
+
+[30] ID: ZBH/2008/page_70.pdf-1
+    Expected answer: 0.15385
+    Program: subtract(3.0, 2.6), divide(#0, 2.6)
+    Question: what is the percent change in information technology integration from 2006 to 20...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(3.0, 2.6) = 0.4
+        Correct: subtract(3.0, 2.6) = 0.400000
+
+[31] ID: AAPL/2013/page_27.pdf-2
+    Expected answer: 2.34
+    Program: subtract(431, 100), divide(#0, 100), subtract(197, 100), divide(#2, 100), subtract(#1, #3)
+    Question: by how much did apple inc . outperform the s&p computer hardware index over the ...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(431.0, 100.0) = 331.0
+        Correct: subtract(431.0, 100.0) = 331.000000
+      Step 2:
+        Claimed: minus2-3(197.0, 100.0) = 97.0
+        Correct: subtract(197.0, 100.0) = 97.000000
+
+[32] ID: C/2008/page_212.pdf-3
+    Expected answer: -2119.0
+    Program: subtract(4273, 6392)
+    Question: what was the change in millions of the carrying amount reported on the consolida...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(4273.0, 6392.0) = -2119.0
+        Correct: subtract(4273.0, 6392.0) = -2119.000000
+
+[33] ID: WRK/2018/page_86.pdf-3
+    Expected answer: 9.8
+    Program: subtract(34.6, 24.8)
+    Question: how much of the cost of the acquisition was not goodwill and intangible assets?...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(34.6, 24.8) = 9.8
+        Correct: subtract(34.6, 24.8) = 9.800000
+
+[34] ID: LMT/2012/page_46.pdf-2
+    Expected answer: 0.14264
+    Program: subtract(737, 645), divide(#0, 645)
+    Question: what is the growth rate in operating profit for mst in 2012?...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(737.0, 645.0) = 92.0
+        Correct: subtract(737.0, 645.0) = 92.000000
+
+[35] ID: ETR/2004/page_216.pdf-4
+    Expected answer: 3.94596
+    Program: subtract(18854, 3812), divide(#0, 3812)
+    Question: what is the percent change in receivables from or ( payables to ) the money pool...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(18854.0, 3812.0) = 15042.0
+        Correct: subtract(18854.0, 3812.0) = 15042.000000
+
+[36] ID: DRE/2008/page_29.pdf-3
+    Expected answer: 3.53735
+    Program: subtract(85936, 83000), divide(#0, 83000), multiply(#1, const_100)
+    Question: what is the percent change in total recurring capital expenditures from 2006 to ...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(85936.0, 83000.0) = 2936.0
+        Correct: subtract(85936.0, 83000.0) = 2936.000000
+
+[37] ID: HII/2013/page_116.pdf-1
+    Expected answer: 0.06892
+    Program: divide(116, 1683)
+    Question: for the year ended december 31 2013 , what was the net margin for the 2nd qtr...
+    Errors found:
+      Step 0:
+        Claimed: divide1-1(116.0, 1683.0) = 6.9
+        Correct: NONE (division by zero or invalid)
+
+[38] ID: CME/2012/page_100.pdf-3
+    Expected answer: 0.05093
+    Program: subtract(22.7, 21.6), divide(#0, 21.6)
+    Question: what is the percentage increase in obligation for the mrrp from 2011 to 2012?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(22.7, 21.6) = 1.1
+        Correct: subtract(22.7, 21.6) = 1.100000
+
+[39] ID: AWK/2012/page_118.pdf-3
+    Expected answer: -0.23812
+    Program: subtract(19520, 25621), divide(#0, 25621)
+    Question: how much did the company 2019s valuation allowance decrease from 2010 to 2012?...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(19520.0, 25621.0) = -6101.0
+        Correct: subtract(19520.0, 25621.0) = -6101.000000
+
+[40] ID: APD/2019/page_53.pdf-2
+    Expected answer: 64.2
+    Program: subtract(91.8, 27.6)
+    Question: considering the years 2018-2019 , what is the decrease observed in the pension e...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(91.8, 27.6) = 64.2
+        Correct: subtract(91.8, 27.6) = 64.200000
+
+[41] ID: ETR/2016/page_24.pdf-4
+    Expected answer: -558.0
+    Program: subtract(1666, 2224)
+    Question: what is the net change in net revenue during 2015?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(1666.0, 2224.0) = -558.0
+        Correct: subtract(1666.0, 2224.0) = -558.000000
+
+[42] ID: MS/2013/page_277.pdf-2
+    Expected answer: 11.0
+    Program: subtract(2010, 1999)
+    Question: how many years are currently involved in tax controversies?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(2010.0, 1999.0) = 11.0
+        Correct: subtract(2010.0, 1999.0) = 11.000000
+
+[43] ID: ETR/2016/page_403.pdf-3
+    Expected answer: -1579.0
+    Program: subtract(14215, 15794)
+    Question: what is the net change in entergy new orleans 2019s receivables from the money p...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(14215.0, 15794.0) = -1579.0
+        Correct: subtract(14215.0, 15794.0) = -1579.000000
+
+[44] ID: STT/2007/page_95.pdf-1
+    Expected answer: 331.2253
+    Program: divide(838, 2.53)
+    Question: what is the number of outstanding shares based on the eps , ( in millions ) ?...
+    Errors found:
+      Step 0:
+        Claimed: divide1-1(838.0, 2.53) = 331.2
+        Correct: NONE (division by zero or invalid)
+
+[45] ID: JPM/2010/page_144.pdf-3
+    Expected answer: -23.0
+    Program: subtract(59, 82)
+    Question: what was the change in average ib and other var diversification benefit in milli...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(59.0, 82.0) = -23.0
+        Correct: subtract(59.0, 82.0) = -23.000000
+
+[46] ID: SWKS/2012/page_116.pdf-1
+    Expected answer: 20.3
+    Program: subtract(52.4, 32.1)
+    Question: what is the net chance in unrecognized tax benefits from 2011 to 2012 , ( in mil...
+    Errors found:
+      Step 0:
+        Claimed: minus1-1(52.4, 32.1) = 20.3
+        Correct: subtract(52.4, 32.1) = 20.300000
+
+[47] ID: LMT/2012/page_43.pdf-4
+    Expected answer: 0.08812
+    Program: subtract(1630, 1498), divide(#0, 1498)
+    Question: what is the growth rate in operating profit for aeronautics in 2011?...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(1630.0, 1498.0) = 132.0
+        Correct: subtract(1630.0, 1498.0) = 132.000000
+
+[48] ID: C/2008/page_111.pdf-4
+    Expected answer: 0.10693
+    Program: subtract(1470, 1328), divide(#0, 1328)
+    Question: what was the percentage increase in the operating lease obligations from 2009 to...
+    Errors found:
+      Step 0:
+        Claimed: minus2-1(1470.0, 1328.0) = 142.0
+        Correct: subtract(1470.0, 1328.0) = 142.000000
+
+[49] ID: PPG/2008/page_19.pdf-1
+    Expected answer: 4639.78
+    Program: multiply(3811, 2%), subtract(4716, #0)
+    Question: without the foreign currency translation gain , what would 2008 sales have been ...
+    Errors found:
+      Step 0:
+        Claimed: multiply1-1(3811.0, 0.02) = 76.0
+        Correct: NONE (division by zero or invalid)
+
+[50] ID: LMT/2012/page_72.pdf-3
+    Expected answer: 0.00258
+    Program: divide(1.3, 503)
+    Question: in 2003 what was the ratio of the notional amount of our outstanding foreign cur...
+    Errors found:
+      Step 0:
+        Claimed: divide2-1(1.3, 503.0) = 2.58
+        Correct: NONE (division by zero or invalid)
+
+... and 2521 more entries with errors
+
+
+Full error report saved to: /root/hsin_research/finqa_annotation_errors.json
+================================================================================

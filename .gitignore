@@ -3,6 +3,11 @@ FinQA-main/
 FinTabNet.c-PDF_Annotations/
 metatextgrad/
 toolbench_test/
+PageIndex/
+A-mem/
+reflexion/
+PageIndex/
+
 
 synthesized_rules.json
 
@@ -12,6 +17,9 @@ synthesized_rules.json
 *.zip
 *.log
 *.out
+*.jsonl
+*.json
+*.ipynb
 
 finqa.py
 .ipynb_checkpoints/
@@ -25,3 +33,8 @@ ruledistill-main/data/checkpoints_tmp/
 ruledistill-main/data/visualizations/
 ruledistill-main/src/data/checkpoints-no-example/
 ruledistill-main/src/data/visualizations/
+
+# Lab Logs
+dsl_metrics.jsonl
+dsl_results_batch_*.jsonl
+dsl_rulebook_batch_*.xml

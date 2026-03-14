@@ -5,7 +5,14 @@ load_dotenv()
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
-# Model Selection
+# LLM Backend Selection
+LLM_BACKEND = os.getenv("LLM_BACKEND", "nvidia")  # "nvidia" or "ollama"
+
+# Ollama Settings
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3-next:latest")
+
+# Model Selection (for NVIDIA backend)
 MODEL_NAME = "meta/llama-3.3-70b-instruct"
 
 # Hyper-parameters
