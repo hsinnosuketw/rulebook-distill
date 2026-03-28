@@ -41,11 +41,11 @@ class DataBuffer:
             seed: Random seed for reproducibility
             offset: Starting index in the raw dataset (applied before limit)
         """
+
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed = seed
         self.offset = offset
-        
         # Load dataset
         self.dataset = self._load_dataset(dataset_path)
         
@@ -74,6 +74,7 @@ class DataBuffer:
         print(f"Loaded {len(data)} samples.")
         return data
     
+    # Extract specific fields from the dataset item
     def _extract_item(self, item: dict, idx: int) -> dict:
         """
         Extract question, context, and ground truth from dataset item.
